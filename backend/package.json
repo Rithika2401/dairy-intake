@@ -1,0 +1,27 @@
+{
+  "name": "dairy-intake-hub-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Dairy Intelligent Document Intake & Decision Hub",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/db/seedRunner.js",
+    "migrate": "node src/db/migrateRunner.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.16.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.9.8",
+    "zod": "^3.23.8"
+  }
+}

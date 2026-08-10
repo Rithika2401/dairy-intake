@@ -1,0 +1,26 @@
+{
+  "name": "dairy-intelligent-intake-hub",
+  "version": "1.0.0",
+  "description": "AI-Powered Dairy Intelligent Document Intake & Decision Hub",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run seed",
+    "test": "npm --prefix backend test"
+  },
+  "keywords": [
+    "dairy",
+    "ai",
+    "ocr",
+    "document-intake",
+    "gemini",
+    "react",
+    "node",
+    "mysql"
+  ],
+  "author": "Google Antigravity Pair Programmer",
+  "license": "MIT"
+}
