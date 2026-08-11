@@ -34,17 +34,22 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Security & Base Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      callback(null, true); // Allow request while preserving credentials
+      callback(null, true);
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Requested-With']
 }));
+app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(apiLimiter);

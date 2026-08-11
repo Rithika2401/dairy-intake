@@ -1,16 +1,27 @@
 import axios from 'axios';
 
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const getNormalizedBaseUrl = (configuredUrl) => {
+  let url = (configuredUrl || '').trim();
 
-const getNormalizedBaseUrl = (url) => {
-  let cleanUrl = (url || '').trim().replace(/\/+$/, '');
+  // Automatic production auto-switch: if running in browser on a non-localhost host (e.g. Vercel), override localhost defaults
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (!url || url.includes('localhost') || url.includes('127.0.0.1')) {
+      url = 'https://dairy-intake-1.onrender.com/api/v1';
+    }
+  }
+
+  if (!url) {
+    url = 'https://dairy-intake-1.onrender.com/api/v1';
+  }
+
+  let cleanUrl = url.replace(/\/+$/, '');
   if (!cleanUrl.endsWith('/api/v1')) {
     cleanUrl = `${cleanUrl}/api/v1`;
   }
   return cleanUrl;
 };
 
-const API_BASE_URL = getNormalizedBaseUrl(rawBaseUrl);
+const API_BASE_URL = getNormalizedBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

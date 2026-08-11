@@ -101,10 +101,26 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('[AuthContext Error]: API login request failed.', error);
-      const apiErrorMessage =
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        (error.request ? 'Unable to connect to backend service. Check API URL configuration.' : 'Login failed. Invalid credentials.');
+      let apiErrorMessage = 'Login failed. Invalid credentials.';
+      if (error.response) {
+        const status = error.response.status;
+        const msg = error.response.data?.error?.message || error.response.data?.message;
+        if (status === 401) {
+          apiErrorMessage = msg || 'Invalid email or password. Please check your credentials.';
+        } else if (status === 403) {
+          apiErrorMessage = msg || 'Access denied. Account is inactive or locked.';
+        } else if (status === 404) {
+          apiErrorMessage = msg || 'Authentication route not found (404). Check backend URL configuration.';
+        } else if (status >= 500) {
+          apiErrorMessage = msg || `Backend error (HTTP ${status}). Service or database may be degraded.`;
+        } else {
+          apiErrorMessage = msg || `Authentication error (HTTP ${status}).`;
+        }
+      } else if (error.request) {
+        apiErrorMessage = 'Network Error: Unable to reach backend service on Render. Verify network or API base URL.';
+      } else {
+        apiErrorMessage = error.message || 'An unexpected error occurred during sign-in.';
+      }
 
       return {
         success: false,
