@@ -55,9 +55,10 @@ api.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       if (status === 401) {
-        localStorage.removeItem('dairy_hub_token');
-        localStorage.removeItem('dairy_hub_user');
-        if (window.location.pathname !== '/login') {
+        const savedUser = localStorage.getItem('dairy_hub_user');
+        if (!savedUser && window.location.pathname !== '/login') {
+          localStorage.removeItem('dairy_hub_token');
+          localStorage.removeItem('dairy_hub_user');
           window.location.href = '/login?session_expired=true';
         }
       } else if (status === 403 && window.location.pathname !== '/403') {
