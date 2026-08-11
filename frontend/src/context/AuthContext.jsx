@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await api.post('/auth/login', { email: cleanEmail, password: cleanPass });
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         const { token, user } = response.data.data;
         localStorage.setItem('dairy_hub_token', token);
         localStorage.setItem('dairy_hub_user', JSON.stringify(user));
@@ -100,20 +100,16 @@ export const AuthProvider = ({ children }) => {
         return { success: true, user };
       }
     } catch (error) {
-      console.warn('[AuthContext]: API login failed, checking demo profile fallback...');
-    }
+      console.error('[AuthContext Error]: API login request failed.', error);
+      const apiErrorMessage =
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        (error.request ? 'Unable to connect to backend service. Check API URL configuration.' : 'Login failed. Invalid credentials.');
 
-    // Demo Fallback Login
-    const demoProfile = DEMO_PROFILES[cleanEmail] || DEMO_PROFILES['reviewer@dairycoop.com'];
-    if (demoProfile && (cleanPass === 'password123!' || cleanPass === 'password123' || cleanPass.length > 0)) {
-      const fallbackUser = {
-        ...demoProfile,
-        email: cleanEmail || demoProfile.email
+      return {
+        success: false,
+        error: apiErrorMessage
       };
-      localStorage.setItem('dairy_hub_token', 'demo_jwt_token_2026');
-      localStorage.setItem('dairy_hub_user', JSON.stringify(fallbackUser));
-      setUser(fallbackUser);
-      return { success: true, user: fallbackUser };
     }
 
     return {
