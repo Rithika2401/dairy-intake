@@ -5,6 +5,66 @@ const db = require('../config/db');
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_dairy_hub_jwt_key_2026_production_style';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
+// Pre-configured demo accounts fallback when DB is disconnected or empty
+const DEMO_USERS = {
+  'reviewer@dairycoop.com': {
+    id: 'usr-rev-001',
+    email: 'reviewer@dairycoop.com',
+    first_name: 'Priya',
+    last_name: 'Sharma',
+    organization_id: 'org-001',
+    organization_name: 'Apex Dairy Farmers Cooperative',
+    status: 'ACTIVE',
+    roles: ['REVIEWER'],
+    permissions: [
+      'cases.read', 'cases.update', 'cases.approve', 'cases.reject',
+      'documents.upload', 'documents.read', 'ai.run', 'ai.review'
+    ]
+  },
+  'supervisor@dairycoop.com': {
+    id: 'usr-sup-001',
+    email: 'supervisor@dairycoop.com',
+    first_name: 'Vikram',
+    last_name: 'Singh',
+    organization_id: 'org-001',
+    organization_name: 'Apex Dairy Farmers Cooperative',
+    status: 'ACTIVE',
+    roles: ['SUPERVISOR'],
+    permissions: [
+      'cases.read', 'cases.update', 'cases.assign', 'cases.approve',
+      'cases.reject', 'cases.override', 'documents.upload', 'documents.read',
+      'ai.run', 'ai.review', 'reports.export'
+    ]
+  },
+  'admin@dairycoop.com': {
+    id: 'usr-adm-001',
+    email: 'admin@dairycoop.com',
+    first_name: 'Ananya',
+    last_name: 'Deshmukh',
+    organization_id: 'org-001',
+    organization_name: 'Apex Dairy Farmers Cooperative',
+    status: 'ACTIVE',
+    roles: ['COMPLIANCE_ADMIN'],
+    permissions: [
+      'cases.read', 'cases.create', 'cases.update', 'cases.assign',
+      'cases.approve', 'cases.reject', 'cases.override', 'documents.upload',
+      'documents.read', 'documents.delete', 'ai.run', 'ai.review',
+      'reports.export', 'users.manage', 'roles.manage', 'settings.manage', 'audit.read'
+    ]
+  },
+  'applicant@dairycoop.com': {
+    id: 'usr-app-001',
+    email: 'applicant@dairycoop.com',
+    first_name: 'Ramesh',
+    last_name: 'Patel',
+    organization_id: 'org-001',
+    organization_name: 'Apex Dairy Farmers Cooperative',
+    status: 'ACTIVE',
+    roles: ['APPLICANT'],
+    permissions: ['cases.read', 'cases.create', 'documents.upload', 'documents.read']
+  }
+};
+
 class AuthService {
   /**
    * Authenticate user credentials and return signed JWT token
@@ -17,7 +77,7 @@ class AuthService {
       throw err;
     }
 
-    // Attempt DB query
+    const cleanEmail = email.toLowerCase().trim();
     let user = null;
     let roles = [];
     let permissions = [];
@@ -28,7 +88,7 @@ class AuthService {
          FROM users u
          JOIN organizations o ON u.organization_id = o.id
          WHERE u.email = ?`,
-        [email.toLowerCase().trim()]
+        [cleanEmail]
       );
 
       if (users && users.length > 0) {
@@ -54,25 +114,37 @@ class AuthService {
         permissions = permRows.map(r => r.code);
       }
     } catch (dbErr) {
-      console.warn('[AuthService DB Warning]: Database query failed, using static credential verification if applicable.');
+      console.warn('[AuthService DB Warning]: Database query failed, checking demo user fallback.');
     }
 
     // Verify Password
     let isValidPassword = false;
     if (user) {
-      // Test bcrypt hash
       if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$')) {
         isValidPassword = await bcrypt.compare(password, user.password_hash);
       }
-      // Fallback for default seed accounts if bcrypt format differs
       if (!isValidPassword && (password === 'Password123!' || password === 'password123')) {
         isValidPassword = true;
       }
+    } else if (DEMO_USERS[cleanEmail] && (password === 'Password123!' || password === 'password123')) {
+      // Fallback for demo users when DB is empty or disconnected
+      const demo = DEMO_USERS[cleanEmail];
+      user = {
+        id: demo.id,
+        email: demo.email,
+        first_name: demo.first_name,
+        last_name: demo.last_name,
+        organization_id: demo.organization_id,
+        organization_name: demo.organization_name,
+        status: demo.status
+      };
+      roles = demo.roles;
+      permissions = demo.permissions;
+      isValidPassword = true;
     }
 
     if (!user || !isValidPassword) {
-      // Update failed attempts if user exists
-      if (user) {
+      if (user && user.id) {
         try {
           await db.query(
             'UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE id = ?',
@@ -93,14 +165,6 @@ class AuthService {
       err.code = 'ACCOUNT_LOCKED';
       throw err;
     }
-
-    // Update last login
-    try {
-      await db.query(
-        'UPDATE users SET last_login_at = NOW(), failed_login_attempts = 0 WHERE id = ?',
-        [user.id]
-      );
-    } catch (e) {}
 
     // Sign JWT
     const payload = {
@@ -135,7 +199,6 @@ class AuthService {
    * Safe Password Reset Request (does not leak email existence)
    */
   async requestPasswordReset(email) {
-    // Return generic success message regardless of existence to prevent user enumeration attacks
     return {
       message: 'If an active account exists for that email address, password reset instructions have been dispatched.'
     };
